@@ -39,9 +39,13 @@
   }
 }
 </script>
+<script>
+  // Polyfill for process.env to prevent crashes in environments where it is not defined
+  window.process = window.process || { env: { API_KEY: '' } };
+</script>
 </head>
   <body>
     <div id="root"></div>
-    <script type="module" src="/index.tsx"></script>
+    <script type="module" src="./index.tsx"></script>
   </body>
 </html>
