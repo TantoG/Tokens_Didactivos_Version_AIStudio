@@ -24,15 +24,15 @@
       @keyframes fadeIn { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
     </style>
 
-    <!-- Import Map: Explicitly linking dependencies to React 18 to prevent version conflicts -->
+    <!-- Import Map: Updated URLs to ensure availability -->
     <script type="importmap">
     {
       "imports": {
         "react": "https://esm.sh/react@18.2.0",
         "react-dom/client": "https://esm.sh/react-dom@18.2.0/client",
-        "recharts": "https://esm.sh/recharts@2.12.2?deps=react@18.2.0,react-dom@18.2.0",
+        "recharts": "https://esm.sh/recharts@2.12.3?deps=react@18.2.0,react-dom@18.2.0",
         "lucide-react": "https://esm.sh/lucide-react@0.344.0?deps=react@18.2.0",
-        "@google/genai": "https://esm.sh/@google/genai@0.1.1"
+        "@google/genai": "https://esm.sh/@google/genai"
       }
     }
     </script>
@@ -46,7 +46,7 @@
     <div id="root"></div>
 
     <!-- Application Code -->
-    <script type="text/babel" data-type="module">
+    <script type="text/babel" data-type="module" data-presets="env,react">
       import React, { useState, useEffect } from 'react';
       import ReactDOM from 'react-dom/client';
       import { 
@@ -57,7 +57,7 @@
         RefreshCw, Info, ArrowRightLeft, Loader2, 
         Coins, Cpu, Database, Video, Box 
       } from 'lucide-react';
-      import { GoogleGenAI, Type } from "@google/genai";
+      import { GoogleGenAI } from "@google/genai";
 
       // --- CONFIGURATION & CONSTANTS ---
       const GEMINI_MODEL = 'gemini-3-flash-preview';
@@ -69,8 +69,8 @@
       ];
 
       // --- SERVICES ---
-      // Note: In a real deployment, ensure process.env.API_KEY is populated.
-      const ai = new GoogleGenAI({ apiKey: process.env.API_KEY });
+      // Initialized with empty key for demo; in production, this needs a valid key.
+      const ai = new GoogleGenAI({ apiKey: process.env.API_KEY || 'demo-key' });
 
       // --- COMPONENTS ---
 
@@ -86,6 +86,7 @@
           const char = [];
           for (let i = 0; i < text.length; i += 4) char.push(text.slice(i, i + 4));
           
+          // Simplified BPE simulation
           const bpe = [];
           text.split(' ').forEach(w => {
             if (w.length > 5) {
@@ -148,15 +149,12 @@
 
         const simulate = async () => {
           setLoading(true);
-          // Fake delay for effect if no API key, or real call if configured
-          await new Promise(r => setTimeout(r, 1500));
-          // In a real app with API key, we would call Gemini here.
-          // For the demo without key, we randomize slightly to show interactivity.
+          await new Promise(r => setTimeout(r, 1000));
           const base = Math.floor(Math.random() * 5) + 15;
           setData([
              { lang: 'Inglés', tokens: base, fill: '#6366f1' },
-             { lang: 'Español', tokens: Math.floor(base * 1.3), fill: '#f43f5e' }, // +30% penalty
-             { lang: 'Chino', tokens: Math.floor(base * 0.8), fill: '#10b981' }   // -20% efficiency
+             { lang: 'Español', tokens: Math.floor(base * 1.3), fill: '#f43f5e' }, 
+             { lang: 'Chino', tokens: Math.floor(base * 0.8), fill: '#10b981' }   
           ]);
           setLoading(false);
         };
@@ -166,7 +164,7 @@
             <div className="space-y-6">
               <div className="bg-slate-900 p-6 rounded-xl border border-slate-800">
                 <h3 className="text-xl font-bold text-slate-100 mb-4">La "Multa" del Idioma</h3>
-                <p className="text-slate-400 mb-6">El español consume más tokens que el inglés para decir lo mismo. Esto significa que pagamos más por la misma inteligencia.</p>
+                <p className="text-slate-400 mb-6">El español consume más tokens que el inglés para decir lo mismo.</p>
                 <button 
                   onClick={simulate} 
                   disabled={loading}
@@ -208,9 +206,8 @@
         const [input, setInput] = useState(1000);
         const [output, setOutput] = useState(100);
         
-        // Gemini pricing approximation (generic)
         const costIn = input * 0.0001; 
-        const costOut = output * 0.0004; // Output is usually 3x-4x more expensive
+        const costOut = output * 0.0004; 
         const total = costIn + costOut;
 
         return (
@@ -219,8 +216,7 @@
                <div className="relative z-10">
                  <h2 className="text-2xl font-bold text-white mb-2">Entrada vs. Salida</h2>
                  <p className="text-indigo-200 max-w-lg">
-                   Generar texto (output) es computacionalmente mucho más caro que leerlo (input). 
-                   Es como la diferencia entre <strong>leer un libro</strong> y <strong>escribirlo</strong>.
+                   Generar texto (output) es computacionalmente mucho más caro que leerlo (input).
                  </p>
                </div>
                <Video className="absolute right-4 bottom-4 w-32 h-32 text-indigo-500/10" />
@@ -267,7 +263,6 @@
 
         return (
           <div className="flex flex-col md:flex-row min-h-screen">
-            {/* Sidebar */}
             <aside className="w-full md:w-72 bg-slate-900 border-r border-slate-800 flex flex-col md:h-screen sticky top-0 z-20">
               <div className="p-6 flex items-center border-b border-slate-800">
                 <div className="bg-indigo-600 p-2 rounded-lg text-white mr-3 shadow-lg shadow-indigo-500/20">
@@ -294,8 +289,6 @@
                 ))}
               </nav>
             </aside>
-
-            {/* Main Content */}
             <main className="flex-1 bg-slate-950 p-4 md:p-8 lg:p-12 overflow-y-auto h-screen">
               <div className="max-w-4xl mx-auto">
                 {stage === 'anatomy' && <Stage1Anatomy />}
