@@ -39,8 +39,14 @@
     </script>
 
     <script>
-      // Polyfill for process.env to prevent crashes in libraries that expect it
-      window.process = { env: { API_KEY: '' } };
+      // Polyfill for process.env. 
+      // NOTE: In production, never hardcode keys in client-side code.
+      // Setting API_KEY here as requested for testing purposes.
+      window.process = { 
+        env: { 
+          API_KEY: 'AIzaSyDpt8P3pmPyq4eu1UMLOtF3b-lbA23pFAI' 
+        } 
+      };
     </script>
   </head>
   <body>
@@ -70,8 +76,8 @@
       ];
 
       // --- SERVICES ---
-      // Initialized with empty key for demo; in production, this needs a valid key.
-      const ai = new GoogleGenAI({ apiKey: process.env.API_KEY || 'demo-key' });
+      // Initialized using the key from process.env (configured in the head script)
+      const ai = new GoogleGenAI({ apiKey: process.env.API_KEY });
 
       // --- COMPONENTS ---
 
