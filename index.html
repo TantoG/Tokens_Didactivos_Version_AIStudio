@@ -38,14 +38,13 @@
     }
     </script>
 
+    <!-- API Key Configuration -->
     <script>
-      // Polyfill for process.env. 
-      // NOTE: In production, never hardcode keys in client-side code.
-      // Setting API_KEY here as requested for testing purposes.
-      window.process = { 
-        env: { 
-          API_KEY: 'AIzaSyDpt8P3pmPyq4eu1UMLOtF3b-lbA23pFAI' 
-        } 
+      window.process = {
+        env: {
+          // Clave actualizada según solicitud
+          GEMINI_API_KEY: 'AIzaSyDJ9gNcPn7yC_Qb4lWyKJ20BPIuHB_Ot74'
+        }
       };
     </script>
   </head>
@@ -62,7 +61,7 @@
       import { 
         BookOpen, Scale, Languages, BarChart3 as ChartColumn, 
         RefreshCw, Info, ArrowRightLeft, Loader2, 
-        Coins, Cpu, Database, Video, Box, Globe, AlertTriangle
+        Coins, Cpu, Database, Video, Box, Globe, AlertTriangle, Key
       } from 'lucide-react';
       import { GoogleGenAI, Type } from "@google/genai";
 
@@ -74,10 +73,6 @@
         { id: 'inequity', title: '2. Inequidad', subtitle: 'Sesgo del Idioma', icon: Languages },
         { id: 'asymmetry', title: '3. Asimetría', subtitle: 'Entrada vs Salida', icon: ChartColumn }
       ];
-
-      // --- SERVICES ---
-      // Initialized using the key from process.env (configured in the head script)
-      const ai = new GoogleGenAI({ apiKey: process.env.API_KEY });
 
       // --- COMPONENTS ---
 
@@ -146,7 +141,7 @@
       };
 
       // 2. INEQUITY COMPONENT
-      const Stage2Inequity = () => {
+      const Stage2Inequity = ({ apiKey }) => {
         const [inputText, setInputText] = useState("La inteligencia artificial está transformando el mundo rápidamente.");
         const [loading, setLoading] = useState(false);
         const [error, setError] = useState(null);
@@ -159,9 +154,18 @@
 
         const analyzeText = async () => {
           if (!inputText.trim()) return;
+          if (!apiKey) {
+            setError("Por favor ingresa una API Key válida en el menú lateral.");
+            return;
+          }
+          
           setLoading(true);
           setError(null);
+          
           try {
+            // Instantiate GenAI here with the current API Key
+            const ai = new GoogleGenAI({ apiKey: apiKey });
+
             const response = await ai.models.generateContent({
               model: GEMINI_MODEL,
               contents: `Analyze the following text: "${inputText}". 
@@ -216,10 +220,9 @@
             setError(msg);
             
             let helpfulMsg = `Error: ${msg}`;
-            if (msg.includes("403")) {
-              helpfulMsg += "\n\n⚠️ Problema de Permisos (403): Si estás viendo esto en GitHub, es muy probable que tu API Key tenga restricciones de dominio (Referrer) que bloquean 'github.io'. Ajusta esto en Google Cloud Console.";
+            if (msg.includes("403") || msg.includes("leaked")) {
+              helpfulMsg = "⚠️ Tu API Key ha sido revocada o no tiene permisos. Por favor genera una nueva y actualízala en el menú lateral.";
             }
-            alert(helpfulMsg);
           } finally {
             setLoading(false);
           }
@@ -254,9 +257,7 @@
                   <div className="mt-3 p-3 bg-red-500/10 border border-red-500/30 rounded text-red-200 text-xs flex items-start">
                      <AlertTriangle className="w-4 h-4 mr-2 shrink-0" />
                      <div>
-                       <strong>Error de API:</strong> {error}
-                       <br/>
-                       {error.includes('403') && <span className="block mt-1 opacity-75">Verifica restricciones de dominio en Google Cloud Console.</span>}
+                       <strong>Error:</strong> {error}
                      </div>
                   </div>
                 )}
@@ -370,6 +371,12 @@
       // MAIN APP SHELL
       const App = () => {
         const [stage, setStage] = useState('anatomy');
+        // Initial state now prioritizes the process.env.GEMINI_API_KEY
+        const [apiKey, setApiKey] = useState(process.env.GEMINI_API_KEY || localStorage.getItem('gemini_api_key') || '');
+
+        useEffect(() => {
+          localStorage.setItem('gemini_api_key', apiKey);
+        }, [apiKey]);
 
         return (
           <div className="flex flex-col md:flex-row min-h-screen">
@@ -398,11 +405,27 @@
                   </button>
                 ))}
               </nav>
+
+              <div className="p-4 border-t border-slate-800 bg-slate-950/50">
+                 <div className="mb-2 flex items-center text-xs text-slate-500 font-bold uppercase">
+                    <Key size={12} className="mr-1"/> Configuración API
+                 </div>
+                 <input 
+                    type="password" 
+                    value={apiKey}
+                    onChange={(e) => setApiKey(e.target.value)}
+                    placeholder="Pega tu Google API Key aquí..."
+                    className="w-full bg-slate-900 border border-slate-700 text-slate-300 text-xs rounded p-2 focus:ring-1 focus:ring-indigo-500 outline-none"
+                 />
+                 <div className="text-[10px] text-slate-600 mt-1 leading-tight">
+                    Tu clave se guarda localmente en el navegador.
+                 </div>
+              </div>
             </aside>
             <main className="flex-1 bg-slate-950 p-4 md:p-8 lg:p-12 overflow-y-auto h-screen">
               <div className="max-w-4xl mx-auto">
                 {stage === 'anatomy' && <Stage1Anatomy />}
-                {stage === 'inequity' && <Stage2Inequity />}
+                {stage === 'inequity' && <Stage2Inequity apiKey={apiKey} />}
                 {stage === 'asymmetry' && <Stage3Asymmetry />}
               </div>
             </main>
