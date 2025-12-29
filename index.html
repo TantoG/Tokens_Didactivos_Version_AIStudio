@@ -51,14 +51,14 @@
       import React, { useState, useEffect } from 'react';
       import ReactDOM from 'react-dom/client';
       import { 
-        BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Cell 
+        BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Cell, LabelList
       } from 'recharts';
       import { 
         BookOpen, Scale, Languages, BarChart3 as ChartColumn, 
         RefreshCw, Info, ArrowRightLeft, Loader2, 
-        Coins, Cpu, Database, Video, Box 
+        Coins, Cpu, Database, Video, Box, Globe 
       } from 'lucide-react';
-      import { GoogleGenAI } from "@google/genai";
+      import { GoogleGenAI, Type } from "@google/genai";
 
       // --- CONFIGURATION & CONSTANTS ---
       const GEMINI_MODEL = 'gemini-3-flash-preview';
@@ -141,62 +141,145 @@
 
       // 2. INEQUITY COMPONENT
       const Stage2Inequity = () => {
+        const [inputText, setInputText] = useState("La inteligencia artificial está transformando el mundo rápidamente.");
         const [loading, setLoading] = useState(false);
-        const [data, setData] = useState([
-          { lang: 'Inglés', tokens: 15, fill: '#6366f1' },
-          { lang: 'Español', tokens: 20, fill: '#f43f5e' },
-          { lang: 'Chino', tokens: 12, fill: '#10b981' }
+        const [results, setResults] = useState(null);
+        const [chartData, setChartData] = useState([
+          { lang: 'Inglés', tokens: 7, fill: '#6366f1' },
+          { lang: 'Español', tokens: 9, fill: '#f43f5e' },
+          { lang: 'Chino', tokens: 6, fill: '#10b981' }
         ]);
 
-        const simulate = async () => {
+        const analyzeText = async () => {
+          if (!inputText.trim()) return;
           setLoading(true);
-          await new Promise(r => setTimeout(r, 1000));
-          const base = Math.floor(Math.random() * 5) + 15;
-          setData([
-             { lang: 'Inglés', tokens: base, fill: '#6366f1' },
-             { lang: 'Español', tokens: Math.floor(base * 1.3), fill: '#f43f5e' }, 
-             { lang: 'Chino', tokens: Math.floor(base * 0.8), fill: '#10b981' }   
-          ]);
-          setLoading(false);
+          try {
+            const response = await ai.models.generateContent({
+              model: GEMINI_MODEL,
+              contents: `Analyze the following text: "${inputText}". 
+              1. Translate it into English and Simplified Chinese.
+              2. Return the translated strings.
+              3. Estimate the number of tokens each version (Original Spanish, English, Chinese) would consume in a standard LLM tokenizer (like cl100k_base).
+              `,
+              config: {
+                responseMimeType: "application/json",
+                responseSchema: {
+                  type: Type.OBJECT,
+                  properties: {
+                    original: {
+                      type: Type.OBJECT,
+                      properties: {
+                        language: { type: Type.STRING },
+                        text: { type: Type.STRING },
+                        token_count: { type: Type.NUMBER }
+                      }
+                    },
+                    english: {
+                      type: Type.OBJECT,
+                      properties: {
+                        text: { type: Type.STRING },
+                        token_count: { type: Type.NUMBER }
+                      }
+                    },
+                    chinese: {
+                      type: Type.OBJECT,
+                      properties: {
+                        text: { type: Type.STRING },
+                        token_count: { type: Type.NUMBER }
+                      }
+                    }
+                  }
+                }
+              }
+            });
+
+            const json = JSON.parse(response.text);
+            
+            setResults(json);
+            setChartData([
+               { lang: 'Inglés', tokens: json.english.token_count, fill: '#6366f1' },
+               { lang: 'Español', tokens: json.original.token_count, fill: '#f43f5e' }, 
+               { lang: 'Chino', tokens: json.chinese.token_count, fill: '#10b981' }   
+            ]);
+            
+          } catch (error) {
+            console.error("Error generating analysis", error);
+            alert("Error al conectar con Gemini. Verifica tu API Key.");
+          } finally {
+            setLoading(false);
+          }
         };
 
         return (
-          <div className="animate-fade-in grid lg:grid-cols-2 gap-8">
-            <div className="space-y-6">
-              <div className="bg-slate-900 p-6 rounded-xl border border-slate-800">
-                <h3 className="text-xl font-bold text-slate-100 mb-4">La "Multa" del Idioma</h3>
-                <p className="text-slate-400 mb-6">El español consume más tokens que el inglés para decir lo mismo.</p>
+          <div className="animate-fade-in grid lg:grid-cols-2 gap-8 h-full">
+            <div className="space-y-6 flex flex-col">
+              <div className="bg-slate-900 p-6 rounded-xl border border-slate-800 flex-1 flex flex-col">
+                <h3 className="text-xl font-bold text-slate-100 mb-2">La "Multa" del Idioma</h3>
+                <p className="text-slate-400 mb-4 text-sm">
+                  Escribe una frase en español. La traduciremos y compararemos cuántos tokens cuesta decir lo mismo en otros idiomas.
+                </p>
+                
+                <textarea 
+                  value={inputText}
+                  onChange={(e) => setInputText(e.target.value)}
+                  className="w-full bg-slate-950 border border-slate-700 rounded-lg p-3 text-slate-200 focus:ring-2 focus:ring-indigo-500 outline-none h-32 font-mono resize-none mb-4"
+                  placeholder="Escribe algo aquí..."
+                />
+
                 <button 
-                  onClick={simulate} 
+                  onClick={analyzeText} 
                   disabled={loading}
-                  className="w-full bg-indigo-600 hover:bg-indigo-500 text-white py-3 rounded-lg font-bold flex justify-center items-center transition"
+                  className="w-full bg-indigo-600 hover:bg-indigo-500 text-white py-3 rounded-lg font-bold flex justify-center items-center transition disabled:opacity-50 disabled:cursor-not-allowed"
                 >
                   {loading ? <Loader2 className="animate-spin mr-2"/> : <RefreshCw className="mr-2"/>}
-                  Simular Costo Comparativo
+                  {loading ? "Analizando..." : "Analizar y Traducir"}
                 </button>
               </div>
-              <div className="grid grid-cols-2 gap-4 text-center">
-                <div className="bg-slate-800 p-4 rounded-lg">
-                  <div className="text-red-400 font-bold text-2xl">+30%</div>
-                  <div className="text-xs text-slate-500 uppercase">Sobrecosto Español</div>
+
+              {results && (
+                <div className="grid gap-3">
+                  <div className="bg-slate-800/50 p-3 rounded border border-slate-700 border-l-4 border-l-indigo-500">
+                    <div className="text-[10px] text-indigo-300 uppercase font-bold mb-1">Inglés (Traducción)</div>
+                    <div className="text-slate-300 text-sm">{results.english.text}</div>
+                  </div>
+                  <div className="bg-slate-800/50 p-3 rounded border border-slate-700 border-l-4 border-l-emerald-500">
+                    <div className="text-[10px] text-emerald-300 uppercase font-bold mb-1">Chino (Traducción)</div>
+                    <div className="text-slate-300 text-sm">{results.chinese.text}</div>
+                  </div>
                 </div>
-                <div className="bg-slate-800 p-4 rounded-lg">
-                  <div className="text-green-400 font-bold text-2xl">-20%</div>
-                  <div className="text-xs text-slate-500 uppercase">Eficiencia Chino</div>
-                </div>
-              </div>
+              )}
             </div>
             
-            <div className="bg-slate-900 p-4 rounded-xl border border-slate-800 h-80">
-              <ResponsiveContainer width="100%" height="100%">
-                <BarChart data={data} layout="vertical">
-                  <CartesianGrid strokeDasharray="3 3" horizontal={false} stroke="#334155" />
-                  <XAxis type="number" hide />
-                  <YAxis dataKey="lang" type="category" width={60} stroke="#94a3b8" fontSize={12} />
-                  <Tooltip cursor={{fill: 'transparent'}} contentStyle={{background: '#1e293b', border: 'none', color:'#fff'}} />
-                  <Bar dataKey="tokens" radius={[0, 4, 4, 0]} barSize={40} />
-                </BarChart>
-              </ResponsiveContainer>
+            <div className="flex flex-col gap-4">
+              <div className="bg-slate-900 p-4 rounded-xl border border-slate-800 flex-1 min-h-[300px]">
+                <h4 className="text-sm font-semibold text-slate-400 mb-4 text-center">Costo de Tokens por Idioma</h4>
+                <ResponsiveContainer width="100%" height="90%">
+                  <BarChart data={chartData} layout="vertical" margin={{top: 5, right: 30, left: 20, bottom: 5}}>
+                    <CartesianGrid strokeDasharray="3 3" horizontal={false} stroke="#334155" />
+                    <XAxis type="number" hide />
+                    <YAxis dataKey="lang" type="category" width={60} stroke="#94a3b8" fontSize={12} tick={{fill: '#94a3b8'}} />
+                    <Tooltip 
+                      cursor={{fill: 'rgba(255,255,255,0.05)'}} 
+                      contentStyle={{background: '#1e293b', border: '1px solid #334155', color:'#fff', borderRadius: '8px'}} 
+                    />
+                    <Bar dataKey="tokens" radius={[0, 4, 4, 0]} barSize={40}>
+                      <LabelList dataKey="tokens" position="right" fill="#fff" fontWeight="bold" />
+                    </Bar>
+                  </BarChart>
+                </ResponsiveContainer>
+              </div>
+              
+               <div className="bg-amber-900/20 border border-amber-500/30 p-4 rounded-xl">
+                  <div className="flex items-start gap-3">
+                    <Globe className="w-5 h-5 text-amber-500 mt-1 shrink-0" />
+                    <div>
+                      <h4 className="text-amber-200 font-bold text-sm mb-1">¿Por qué sucede esto?</h4>
+                      <p className="text-amber-100/70 text-xs leading-relaxed">
+                        Los tokenizadores están entrenados mayoritariamente con datos en inglés. Las palabras en inglés suelen ser 1 token. En español, a veces se dividen en 2. En chino, un solo caracter (token) carga mucho significado.
+                      </p>
+                    </div>
+                  </div>
+               </div>
             </div>
           </div>
         );
